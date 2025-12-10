@@ -1,3 +1,6 @@
+export const dynamic = "force-dynamic";
+export const fetchCache = "force-no-store";
+
 // app/(root)/page.tsx
 import { headers, cookies } from "next/headers";
 import Link from "next/link";
@@ -6,7 +9,7 @@ import HeaderBox from "@/components/HeaderBox";
 import RightSidebar from "@/components/RightSidebar";
 import TotalBalanceBox from "@/components/TotalBalanceBox";
 import RecentTransactions from "@/components/RecentTransactions";
-import FinancialNews from "@/components/FinancialNews"; // ✅ NEW
+import FinancialNews from "@/components/FinancialNews";
 import { getLoggedInUser } from "@/lib/actions/user.actions";
 
 type UiAccount = {
@@ -27,11 +30,8 @@ async function absUrl(path: string) {
   return `${proto}://${host}${path}`;
 }
 
-// Fetch linked accounts for the logged-in user
 async function getLinkedAccounts(): Promise<UiAccount[]> {
   const url = await absUrl("/api/plaid/accounts");
-
-  // Forward the user's cookies so API sees the Appwrite session
   const cookieHeader = (await cookies()).toString();
 
   const res = await fetch(url, {
@@ -39,14 +39,11 @@ async function getLinkedAccounts(): Promise<UiAccount[]> {
     headers: { cookie: cookieHeader },
   }).catch(() => null);
 
-  if (!res || !res.ok) {
-    return [];
-  }
-
+  if (!res || !res.ok) return [];
   const json = await res.json().catch(() => null);
-  if (!json || !json.ok) return [];
+  if (!json?.ok) return [];
 
-  return (json.accounts ?? []) as UiAccount[];
+  return json.accounts as UiAccount[];
 }
 
 const Home = async () => {
@@ -54,13 +51,10 @@ const Home = async () => {
   const accounts = await getLinkedAccounts();
 
   const totalBanks = accounts.length;
-
   const totalCurrentBalance = accounts.reduce((sum, a) => {
     const n = Number(a.currentBalance ?? 0);
     return Number.isFinite(n) ? sum + n : sum;
   }, 0);
-
-  const hasLinkedBank = totalBanks > 0;
 
   return (
     <section className="home">
@@ -73,14 +67,14 @@ const Home = async () => {
             subtext="Access and manage your account and transactions efficiently"
           />
 
-          {!hasLinkedBank ? (
+          {totalBanks === 0 ? (
             <div className="rounded-lg border p-4">
               <p className="text-sm text-gray-700">
                 No bank linked yet.{" "}
                 <Link href="/link-bank" className="text-blue-600 underline">
                   Link a bank
-                </Link>{" "}
-                to see your balances and transactions.
+                </Link>
+                {" "}to see your balances and transactions.
               </p>
             </div>
           ) : (
@@ -92,18 +86,20 @@ const Home = async () => {
           )}
         </header>
 
-        {/* Recent transactions */}
         <section className="mt-8">
           <RecentTransactions />
         </section>
 
-        {/* ✅ Latest Financial News card on the dashboard */}
         <section className="mt-8">
           <FinancialNews />
         </section>
       </div>
 
-      <RightSidebar user={loggedIn} transactions={[]} banks={accounts as any} />
+      <RightSidebar
+        user={loggedIn}
+        transactions={[]}
+        banks={accounts as any}
+      />
     </section>
   );
 };
