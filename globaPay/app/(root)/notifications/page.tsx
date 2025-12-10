@@ -1,4 +1,6 @@
-// app/(root)/notifications/page.tsx
+export const dynamic = "force-dynamic";
+export const fetchCache = "force-no-store";
+
 import { headers } from "next/headers";
 import MarkAllNotificationsReadButton from "@/components/MarkAllNotificationsReadButton";
 
@@ -20,9 +22,7 @@ async function getNotifications() {
   });
 
   const json = await res.json().catch(() => null);
-  if (!res.ok || !json?.ok) {
-    throw new Error(json?.error || "Failed to load notifications");
-  }
+  if (!res.ok || !json?.ok) throw new Error(json?.error || "Failed to load notifications");
 
   return json.notifications as any[];
 }
@@ -59,31 +59,21 @@ export default async function NotificationsPage() {
       ) : (
         <ul className="space-y-2">
           {notifications.map((n) => {
-            const isUnread = !n.isRead;
-            const date = n.timestamp
-              ? new Date(n.timestamp).toLocaleString()
-              : "";
-
+            const date = n.timestamp ? new Date(n.timestamp).toLocaleString() : "";
             return (
               <li
                 key={n.$id}
                 className={`rounded-lg border px-4 py-3 text-sm ${
-                  isUnread ? "bg-blue-50 border-blue-200" : "bg-white"
+                  !n.isRead ? "bg-blue-50 border-blue-200" : "bg-white"
                 }`}
               >
                 <div className="flex items-center justify-between">
-                  <span className="font-medium">
-                    {n.message || "Notification"}
-                  </span>
+                  <span className="font-medium">{n.message || "Notification"}</span>
                   <span className="ml-3 text-[11px] uppercase tracking-wide text-gray-500">
                     {n.type}
                   </span>
                 </div>
-                {date && (
-                  <div className="mt-1 text-xs text-gray-500">
-                    {date}
-                  </div>
-                )}
+                {date && <div className="mt-1 text-xs text-gray-500">{date}</div>}
               </li>
             );
           })}
