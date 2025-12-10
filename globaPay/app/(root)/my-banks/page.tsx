@@ -1,9 +1,10 @@
-// app/(root)/my-banks/page.tsx
+export const dynamic = "force-dynamic";
+export const fetchCache = "force-no-store";
+
 import Link from "next/link";
 import { headers } from "next/headers";
 import UnlinkBankButton from "@/components/UnlinkBankButton";
 
-// ---------- Types ----------
 type UiAccount = {
   accountId: string;
   name: string;
@@ -12,10 +13,9 @@ type UiAccount = {
   currentBalance: number;
   isoCurrencyCode?: string | null;
   institutionName?: string | null;
-  institutionId?: string | null; // ✅ for unlinking
+  institutionId?: string | null;
 };
 
-// ---------- Helpers ----------
 function localeFor(code?: string | null): string {
   const c = (code || "").toUpperCase();
   if (c === "CAD") return "en-CA";
@@ -30,7 +30,6 @@ function money(n: number | null | undefined, code?: string | null) {
     return new Intl.NumberFormat(localeFor(code), {
       style: "currency",
       currency: code || "USD",
-      maximumFractionDigits: 2,
     }).format(val);
   } catch {
     return `${val.toFixed(2)} ${code || ""}`;
@@ -58,18 +57,13 @@ async function getAccounts(): Promise<UiAccount[]> {
   let json: any = null;
   try {
     json = JSON.parse(text);
-  } catch {
-    // Non-JSON – let checks below handle it
-  }
+  } catch {}
 
-  if (!res.ok || !json?.ok) {
-    throw new Error(json?.error || "Failed to load accounts");
-  }
+  if (!res.ok || !json?.ok) throw new Error(json?.error || "Failed to load accounts");
 
   return json.accounts as UiAccount[];
 }
 
-// ---------- Page ----------
 export default async function MyBanksPage() {
   let accounts: UiAccount[] = [];
 
@@ -112,8 +106,7 @@ export default async function MyBanksPage() {
       ) : (
         <ul className="space-y-3">
           {accounts.map((a) => {
-            const code = a.isoCurrencyCode ?? "USD";
-            const current = money(a.currentBalance, code);
+            const balance = money(a.currentBalance, a.isoCurrencyCode);
 
             return (
               <li
@@ -124,21 +117,19 @@ export default async function MyBanksPage() {
                   <div className="font-medium truncate">
                     {a.name || "Account"}{" "}
                     <span className="ml-1 text-xs text-gray-500">
-                      {a.subtype ? a.subtype : "—"}
+                      {a.subtype || "—"}
                       {a.institutionName ? ` • ${a.institutionName}` : ""}
                     </span>
                   </div>
                   <div className="text-xs text-gray-500">
-                    {a.name || "—"} • {a.mask ? `••••${a.mask}` : "—"}
+                    {a.name} • {a.mask ? `••••${a.mask}` : "—"}
                   </div>
                 </div>
 
                 <div className="ml-4 flex items-center">
-                  <div className="text-right">
-                    <div className="font-semibold">{current}</div>
+                  <div className="text-right mr-3">
+                    <div className="font-semibold">{balance}</div>
                   </div>
-
-                  {/* ✅ Remove / unlink bank */}
                   <UnlinkBankButton institutionId={a.institutionId} />
                 </div>
               </li>
